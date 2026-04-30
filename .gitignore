@@ -1,0 +1,11 @@
+# Ignore authentication and session data
+cookies.txt
+*.session
+*.session-journal
+
+# Ignore environment variables
+.env
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
