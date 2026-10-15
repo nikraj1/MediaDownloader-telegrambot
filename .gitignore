@@ -1,11 +1,24 @@
-# Ignore authentication and session data
+# original entries
 cookies.txt
 *.session
 *.session-journal
-
-# Ignore environment variables
 .env
-
-# Ignore Python cache
 __pycache__/
 *.py[cod]
+
+# secrets & runtime
+.env.*
+!.env.example
+cookies*.txt
+secrets/
+data/
+downloads/
+*.part
+*.ytdl
+
+# python / tooling
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

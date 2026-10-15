@@ -1,93 +1,84 @@
-# 🎥 Instagram Reel Downloader Bot
+# MediaDownloader-telegrambot
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+A Telegram bot that downloads media from (almost) any link supported by
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) and sends it back as a playable
+video/audio (document fallback). Single async Python process, long polling,
+runs in one Docker container on a VPS. No open ports.
 
-An asynchronous Telegram bot built with **Pyrogram** and **yt-dlp** that downloads Instagram Reels and sends them as video files. This bot is specifically designed for ephemeral environments like **Render** by processing media entirely in-memory.
+## How it works
 
----
+link → URL extraction + normalisation → SSRF guard → rate limits / dedupe →
+bounded queue → yt-dlp probe (subprocess) → policy (size, duration, live,
+playlist, DRM) → yt-dlp download into a per-job temp dir → ffprobe /
+faststart / thumbnail → `send_video` / `send_audio` / `send_document` → cleanup.
 
-## 🚀 Features
+* **Kurigram** (maintained Pyrogram fork) over MTProto: bots can upload up to
+  ~2 GB without a local Bot API server.
+* Downloads go to disk, never RAM. Every yt-dlp/FFmpeg run is a killable
+  subprocess with hard timeouts.
+* `/cancel` or the ❌ button stops a job within seconds and removes its files.
 
-*   **⚡ In-Memory Streaming:** Downloads and uploads videos using `io.BytesIO`, ensuring no files are stored on the host's disk.
-*   **📡 Uptime-Ready:** Integrated **Flask** web server to maintain activity on hosting platforms (prevents idling).
-*   **🍪 Login Bypass:** Full support for `cookies.txt` to navigate Instagram's rate limits and authentication walls.
-*   **🛠️ Robust Downloader:** Powered by `yt-dlp` for high-quality video extraction and metadata handling.
-*   **💬 Group & Private Support:** Optimized for use in direct messages or shared groups.
+> "Supported by yt-dlp" is not "works from a datacenter IP". YouTube often
+> blocks VPS IPs; Instagram usually needs cookies.
 
----
+## Commands
 
-## ⚙️ Configuration
+| Command | Who | What |
+|---|---|---|
+| send a link | everyone (private chat) | download video |
+| `/dl <link>` | everyone (groups too) | download video |
+| `/audio <link>` | everyone | audio only |
+| `/cancel` | everyone | cancel your newest job |
+| `/settings` | everyone | auto vs. pick-quality mode, max quality |
+| `/help`, `/start` | everyone | info and limits |
+| `/stats`, `/pause`, `/resume`, `/cookies` | admins | operations |
 
-### Environment Variables
-Create a `.env` file in the root directory or set these in your cloud provider's dashboard:
+## Quick start (Docker, recommended)
 
-| Variable | Description |
-| :--- | :--- |
-| **API_ID** | Your Telegram API ID from [my.telegram.org](https://my.telegram.org) |
-| **API_HASH** | Your Telegram API Hash from [my.telegram.org](https://my.telegram.org) |
-| **BOT_TOKEN** | Your Bot Token from [@BotFather](https://t.me/botfather) |
-| **PORT** | The port for the Flask uptime server (Default: 10000) |
+```bash
+git clone https://github.com/nikraj1/MediaDownloader-telegrambot /opt/mediabot
+cd /opt/mediabot
+cp .env.example .env && chmod 600 .env && $EDITOR .env
+mkdir -p secrets/cookies data/state data/session
+chmod 700 secrets secrets/cookies
+sudo chown -R 10001:10001 data
+export GIT_SHA=$(git rev-parse --short HEAD)
+docker compose build && docker compose up -d
+docker compose ps    # wait for (healthy)
+sudo deploy/egress-firewall.sh apply
+```
 
----
+Full deploy, update, rollback and incident steps: [deploy/RUNBOOK.md](deploy/RUNBOOK.md).
 
-## 📦 Installation
+## Local development
 
-1.  **Clone the Repository**
-    ```bash
-    git clone [https://github.com/nikraj1/firsttgbot.git](https://github.com/nikraj1/firsttgbot.git)
-    cd firsttgbot
-    ```
+```bash
+python3.12 -m venv .venv && . .venv/bin/activate
+pip uninstall -y pyrogram   # kurigram ships the same module name
+pip install -r requirements.txt
+# needs ffmpeg + ffprobe on PATH
+cp .env.example .env   # set API_ID, API_HASH, BOT_TOKEN, LOG_FORMAT=text
+# and point JOB_DIR/STATE_DIR/SESSION_DIR/COOKIES_DIR at local folders, e.g. ./data/jobs
+python -m app          # or: python bot.py
+```
 
-2.  **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
+## Configuration
 
-3.  **Prepare Cookies**
-    *   Export your Instagram cookies using a browser extension (Netscape format).
-    *   Save as `cookies.txt` in the root folder.
-    *   **Security Note:** Never commit `cookies.txt` to GitHub. It is already added to `.gitignore`.
+All settings are environment variables, see [.env.example](.env.example).
+Missing or invalid values stop the bot at startup with a one-line error.
 
-4.  **Run the Bot**
-    ```bash
-    python your_script_name.py
-    ```
+## Cookies (optional)
 
----
+Put Netscape-format cookie files in `secrets/cookies/` named per site
+(`instagram.txt`, `youtube.txt`, `x.txt`, `facebook.txt`, `tiktok.txt`,
+`reddit.txt`, `vimeo.txt`). They're mounted read-only, copied per job, used
+only for the matching domain, and never logged. Use a throwaway account.
 
-## 🛠️ Tech Stack
+## Privacy
 
-*   **Framework:** [Pyrogram](https://docs.pyrogram.org/)
-*   **Engine:** [yt-dlp](https://github.com/yt-dlp/yt-dlp)
-*   **Web Server:** [Flask](https://flask.palletsprojects.com/)
-*   **HTTP Client:** [Requests](https://requests.readthedocs.io/)
+Files exist only in a per-job temp directory and are deleted after delivery
+(or failure). Logs never contain tokens, cookies or URL query strings.
 
----
+## License
 
-## 🚀 Deployment on Render
-
-1.  Create a new **Web Service** on Render.
-2.  Connect your GitHub repository.
-3.  Set **Build Command:** `pip install -r requirements.txt`
-4.  Set **Start Command:** `python your_script_name.py`
-5.  Add your environment variables in the **Environment** tab.
-6.  *Optional:* Use a service like **UptimeRobot** to ping your Render URL every 10 minutes to keep the bot active.
-
----
-
-## 🤝 Contributing
-
-Contributions make the open-source community an amazing place to learn, inspire, and create.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/NewFeature`)
-3. Commit your Changes (`git commit -m 'Add NewFeature'`)
-4. Push to the Branch (`git push origin feature/NewFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT, see [LICENSE](LICENSE).

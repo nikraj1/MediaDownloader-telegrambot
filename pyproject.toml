@@ -1,0 +1,14 @@
+# Tool config only, no packaging.
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["network: live URL regression tests (opt-in: pytest -m network)"]
+addopts = "-m 'not network'"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = ["S101", "S603", "S607", "S310"]

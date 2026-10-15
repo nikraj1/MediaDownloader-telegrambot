@@ -1,0 +1,16 @@
+# Re-applies the bot egress firewall after Docker starts (survives reboots).
+#   sudo cp deploy/mediabot-egress.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mediabot-egress
+[Unit]
+Description=MediaDownloader bot egress firewall
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/mediabot/deploy/egress-firewall.sh apply
+ExecStop=/opt/mediabot/deploy/egress-firewall.sh remove
+
+[Install]
+WantedBy=multi-user.target

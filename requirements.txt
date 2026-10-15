@@ -1,6 +1,9 @@
-pyrogram
-yt-dlp
-python-dotenv
-Flask
-requests
-tgcrypto
+# PROVISIONAL: not a real lock file yet (generated without network access).
+# Replace it on a machine with internet before the first deploy:
+#   pip install pip-tools
+#   pip-compile --generate-hashes requirements.in -o requirements.txt
+# Then switch the Dockerfile builder step to `pip wheel --require-hashes`.
+kurigram>=2.1,<3
+tgcrypto>=1.2.5
+yt-dlp[default]>=2025.1.1
+python-dotenv>=1.0
